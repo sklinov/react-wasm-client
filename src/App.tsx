@@ -1,26 +1,46 @@
-import React, {useState} from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { useEffect, useState } from "react";
+import "./App.css";
+import { createWorkerFactory, useWorker } from "@shopify/react-web-worker";
+
+const createWorker = createWorkerFactory(() => import("./wasm.worker"));
 
 function App() {
-  import('wasm').then(({ add_two_ints, fib }) => {
-      // off-loading computations to WASM
-      const sumResult = add_two_ints(10, 20);
-      const fibResult = fib(10);
-      // updating our sumResult and fibResult values (declared below)
-      setSum(sumResult);
-      setFib(fibResult);
-  });
-   const [sum, setSum] = useState<number>(0);
-   const [fib, setFib] = useState<number>(0);
-   return (
-      // I cut out the fluff
-      // Displaying our sum and fib values that're updated by WASM
-      <div className="App" >
-         <div>Sum Results: {sum}</div>
-         <div>Fib Results: {fib}</div>
-      </div>
-   );
+  const [input1, setInput1] = useState<number>();
+  const [input2, setInput2] = useState<number>();
+  const [sum, setSum] = useState<number>(0);
+  const [fib, setFib] = useState<number>(0);
+
+  const worker = useWorker(createWorker);
+
+  useEffect(() => {
+    if (input1 && input2) {
+      (async () => {
+        const { fibResult, sumResult } = await worker.wasmWorker([
+          input1,
+          input2,
+        ]);
+        setSum(sumResult);
+        setFib(fibResult);
+      })();
+    }
+  }, [input1, input2, worker]);
+
+  return (
+    <div className="App">
+      <input
+        type="number"
+        onChange={(e) => setInput1(Number(e.target.value))}
+      />
+      <br />
+      <br />
+      <input
+        type="number"
+        onChange={(e) => setInput2(Number(e.target.value))}
+      />
+      <div>Sum Results: {sum}</div>
+      <div>Fib Results: {fib}</div>
+    </div>
+  );
 }
 
 export default App;
